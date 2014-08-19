@@ -168,7 +168,6 @@ def show_complexity():
     line_changes = compute_line_changes(old_complexities, new_complexities)
     update_line_markers(line_changes)
 
-
 def compute_scores_for(filename=None, code=None):
     if filename:
         code = open(filename).read()
@@ -222,11 +221,24 @@ def compute_new_complexities(scores):
 
 def update_line_markers(line_changes):
     filename = vim.current.buffer.name
+    change_count = float(len(line_changes))
+    chunk = int(change_count) / 100
+    i = 0
+
     for line, complexity in line_changes.iteritems():
+        i += 1
+        if not i % chunk:
+            vim.command(':echo "Complexity analysis %d%% complete"'
+                        % (i*100/change_count))
+            vim.command(':redraw')
+            vim.command('sleep 1m')
+
         vim.command(':sign unplace %i' % line)
         vim.command(':sign place %i line=%i name=%s file=%s' %
                     (line, line, complexity, filename))#}}}
 
+
+    vim.command(':echo "Complexity analysis done!"')
 
 def main():
     if sys.stdin.isatty() and len(sys.argv) < 2:

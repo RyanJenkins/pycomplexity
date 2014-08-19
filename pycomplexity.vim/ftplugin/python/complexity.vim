@@ -10,24 +10,6 @@ endif
 if !has('python')
     finish
 endif
-
-if exists("g:loaded_complexity") || &cp
-  finish
-endif
-
-function! s:ClearSigns()
-   sign unplace *
-endfunction
-
-function! s:ToggleComplexity()
-    if exists("g:complexity_is_displaying") && g:complexity_is_displaying
-        call s:ClearSigns()
-        let g:complexity_is_displaying = 0
-    else
-        call s:ShowComplexity()
-    endif
-endfunction
-
 python << endpython
 import vim
 #!/usr/bin/env python
@@ -189,16 +171,28 @@ def complexity_name(complexity):
 
 
 def show_complexity():
+    from time import time
+    t0 = time()
     current_file = vim.current.buffer.name
     try:
         scores = compute_scores_for(current_file)
     except (IndentationError, SyntaxError):
         return
 
+    t1 = time()
     old_complexities = get_old_complexities(current_file)
+    t2 = time()
     new_complexities = compute_new_complexities(scores)
+    t3 = time()
     line_changes = compute_line_changes(old_complexities, new_complexities)
+    t4 = time()
     update_line_markers(line_changes)
+    t5 = time()
+    #print 't1', t1-t0
+    #print 't2', t2-t1
+    #print 't3', t3-t2
+    #print 't4', t4-t3
+    #print 't5', t5-t4
 
 
 def compute_scores_for(filename=None, code=None):
@@ -254,11 +248,24 @@ def compute_new_complexities(scores):
 
 def update_line_markers(line_changes):
     filename = vim.current.buffer.name
+    change_count = float(len(line_changes))
+    chunk = int(change_count) / 100
+    i = 0
+
     for line, complexity in line_changes.iteritems():
+        i += 1
+        if not i % chunk:
+            vim.command(':echo "Complexity analysis %d%% complete"'
+                        % (i*100/change_count))
+            vim.command(':redraw')
+            vim.command('sleep 1m')
+
         vim.command(':sign unplace %i' % line)
         vim.command(':sign place %i line=%i name=%s file=%s' %
                     (line, line, complexity, filename))#}}}
 
+
+    vim.command(':echo "Complexity analysis done!"')
 
 def main():
     if sys.stdin.isatty() and len(sys.argv) < 2:
@@ -285,18 +292,6 @@ if __name__ == '__main__':
 
 endpython
 
-function! s:ShowComplexity()
-    python << END
-show_complexity()
-END
-    let g:complexity_is_displaying = 1
-    " no idea why it is needed to update colors each time
-    " to actually see the colors
-    hi low_complexity guifg=#004400 guibg=#004400 ctermfg=2 ctermbg=2
-    hi medium_complexity guifg=#bbbb00 guibg=#bbbb00 ctermfg=3 ctermbg=3
-    hi high_complexity guifg=#ff2222 guibg=#ff2222 ctermfg=1 ctermbg=1
-endfunction
-
 hi SignColumn guifg=fg guibg=bg
 hi low_complexity guifg=#004400 guibg=#004400 ctermfg=2 ctermbg=2
 hi medium_complexity guifg=#bbbb00 guibg=#bbbb00 ctermfg=3 ctermbg=3
@@ -305,9 +300,31 @@ sign define low_complexity text=XX texthl=low_complexity
 sign define medium_complexity text=XX texthl=medium_complexity
 sign define high_complexity text=XX texthl=high_complexity
 
-if exists("g:complexity_always_on") && g:complexity_always_on
-    autocmd! BufReadPost,BufWritePost,FileReadPost,FileWritePost *.py call s:ShowComplexity()
-    call s:ShowComplexity()
-endif
+autocmd! BufReadPost,BufWritePost,FileReadPost,FileWritePost *.py call ShowComplexity()
+
+function! s:ClearSigns()
+   sign unplace *
+endfunction
+
+function! s:ShowComplexity()
+    python << END
+show_complexity()
+END
+" no idea why it is needed to update colors each time
+" to actually see the colors
+hi low_complexity guifg=#004400 guibg=#004400 ctermfg=2 ctermbg=2
+hi medium_complexity guifg=#bbbb00 guibg=#bbbb00 ctermfg=3 ctermbg=3
+hi high_complexity guifg=#ff2222 guibg=#ff2222 ctermfg=1 ctermbg=1
+endfunction
+
+function! s:ToggleComplexity()
+    if exists("g:complexity_is_displaying") && g:complexity_is_displaying
+        call s:ClearSigns()
+        let g:complexity_is_displaying = 0
+    else
+        call s:ShowComplexity()
+        let g:complexity_is_displaying = 1
+    endif
+endfunction
 
 command! Complexity call s:ToggleComplexity()
