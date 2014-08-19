@@ -222,7 +222,7 @@ def compute_new_complexities(scores):
 def update_line_markers(line_changes):
     filename = vim.current.buffer.name
     change_count = float(len(line_changes))
-    chunk = int(change_count) / 100
+    chunk = (int(change_count) / 100) or 2
     i = 0
 
     for line, complexity in line_changes.iteritems():

@@ -171,29 +171,16 @@ def complexity_name(complexity):
 
 
 def show_complexity():
-    from time import time
-    t0 = time()
     current_file = vim.current.buffer.name
     try:
         scores = compute_scores_for(current_file)
     except (IndentationError, SyntaxError):
         return
 
-    t1 = time()
     old_complexities = get_old_complexities(current_file)
-    t2 = time()
     new_complexities = compute_new_complexities(scores)
-    t3 = time()
     line_changes = compute_line_changes(old_complexities, new_complexities)
-    t4 = time()
     update_line_markers(line_changes)
-    t5 = time()
-    #print 't1', t1-t0
-    #print 't2', t2-t1
-    #print 't3', t3-t2
-    #print 't4', t4-t3
-    #print 't5', t5-t4
-
 
 def compute_scores_for(filename=None, code=None):
     if filename:
@@ -249,7 +236,7 @@ def compute_new_complexities(scores):
 def update_line_markers(line_changes):
     filename = vim.current.buffer.name
     change_count = float(len(line_changes))
-    chunk = int(change_count) / 100
+    chunk = (int(change_count) / 100) or 2
     i = 0
 
     for line, complexity in line_changes.iteritems():
